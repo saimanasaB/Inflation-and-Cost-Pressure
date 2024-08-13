@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import altair as alt
 from statsmodels.tsa.arima.model import ARIMA
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
@@ -11,7 +11,7 @@ st.title("General Index Forecasting App")
 st.write("This app forecasts the General Index using ARIMA and LSTM models up to the year 2034.")
 
 # Upload CSV file
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("cleaned_data.csv", type=["csv"])
 if uploaded_file is not None:
     # Load the dataset
     df = pd.read_csv(uploaded_file)
@@ -40,14 +40,23 @@ if uploaded_file is not None:
     forecast_index = pd.date_range(start=df.index[-1], periods=months_to_forecast + 1, freq='M')[1:]
     forecast_arima_df = pd.DataFrame(forecast_arima.predicted_mean, index=forecast_index, columns=['ARIMA Forecast'])
 
-    # Plot ARIMA forecast
+    # Plot ARIMA forecast using Altair
     st.write("### ARIMA Forecast Plot")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df['General index'], label='Observed')
-    ax.plot(forecast_arima_df, label='ARIMA Forecast', color='red')
-    ax.legend()
-    ax.set_title('ARIMA Forecast of General Index')
-    st.pyplot(fig)
+    arima_chart = alt.Chart(forecast_arima_df.reset_index()).mark_line(color='red').encode(
+        x='Date:T',
+        y='ARIMA Forecast:Q',
+        tooltip=['Date:T', 'ARIMA Forecast:Q']
+    ).properties(
+        title='ARIMA Forecast of General Index'
+    )
+
+    observed_chart = alt.Chart(df.reset_index()).mark_line(color='blue').encode(
+        x='Date:T',
+        y='General index:Q',
+        tooltip=['Date:T', 'General index:Q']
+    )
+
+    st.altair_chart(observed_chart + arima_chart, use_container_width=True)
 
     # LSTM Model
     st.subheader("LSTM Model Forecast")
@@ -112,27 +121,35 @@ if uploaded_file is not None:
     forecast_lstm = scaler.inverse_transform(lst_output)
     forecast_lstm_df = pd.DataFrame(forecast_lstm, index=forecast_index, columns=['LSTM Forecast'])
 
-    # Plot LSTM forecast
+    # Plot LSTM forecast using Altair
     st.write("### LSTM Forecast Plot")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df['General index'], label='Observed')
-    ax.plot(forecast_lstm_df, label='LSTM Forecast', color='orange')
-    ax.legend()
-    ax.set_title('LSTM Forecast of General Index')
-    st.pyplot(fig)
+    lstm_chart = alt.Chart(forecast_lstm_df.reset_index()).mark_line(color='orange').encode(
+        x='index:T',
+        y='LSTM Forecast:Q',
+        tooltip=['index:T', 'LSTM Forecast:Q']
+    ).properties(
+        title='LSTM Forecast of General Index'
+    )
+
+    st.altair_chart(observed_chart + lstm_chart, use_container_width=True)
 
     # Combine both forecasts
     combined_forecast_df = pd.concat([forecast_arima_df, forecast_lstm_df], axis=1)
 
-    # Plot to compare
+    # Plot to compare using Altair
     st.write("### Comparison of ARIMA and LSTM Forecasts")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df['General index'], label='Observed')
-    ax.plot(combined_forecast_df['ARIMA Forecast'], label='ARIMA Forecast', color='red')
-    ax.plot(combined_forecast_df['LSTM Forecast'], label='LSTM Forecast', color='orange')
-    ax.legend()
-    ax.set_title('Comparison of ARIMA and LSTM Forecasts')
-    st.pyplot(fig)
+    combined_chart = alt.Chart(combined_forecast_df.reset_index()).transform_fold(
+        ['ARIMA Forecast', 'LSTM Forecast'],
+        as_=['Model', 'Forecast']
+    ).mark_line().encode(
+        x='index:T',
+        y='Forecast:Q',
+        color='Model:N',
+        tooltip=['index:T', 'Forecast:Q']
+    ).properties(
+        title='Comparison of ARIMA and LSTM Forecasts'
+    )
+
+    st.altair_chart(observed_chart + combined_chart, use_container_width=True)
 else:
     st.write("Please upload a CSV file to proceed.")
-
