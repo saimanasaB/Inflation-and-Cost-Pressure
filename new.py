@@ -12,8 +12,8 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 st.title('General Index Forecasting using LSTM and SARIMA')
 
 # Load the dataset
-file_path = st.text_input('cleaned_data.csv')
-data = pd.read_csv('cleaned_data.csv')
+file_path = st.text_input('Enter file path of cleaned data (e.g., cleaned_data.csv)', 'cleaned_data.csv')
+data = pd.read_csv(file_path)
 
 # Display the DataFrame
 st.write("Data Preview:")
@@ -195,4 +195,12 @@ comparison_chart = alt.Chart(comparison_data).mark_line().encode(
     width=700,
     height=400
 )
-st.altair
+st.altair_chart(comparison_chart)
+
+# Ensure the plots and metrics are displayed properly
+st.subheader('Forecast Data')
+st.write("Forecasted General Index using SARIMA:")
+st.dataframe(forecast_data_sarima)
+
+st.write("Forecasted General Index using LSTM:")
+st.dataframe(forecast_data_lstm)
