@@ -37,7 +37,7 @@ data.set_index('Date', inplace=True)
 # Plot the General Index to understand its trend
 st.subheader('General Index Over Time')
 base_chart = alt.Chart(data.reset_index()).mark_line().encode(
-    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
+    x='Date:T',
     y='General index:Q'
 ).properties(
     width=700,
@@ -154,7 +154,7 @@ forecast_data_lstm = pd.DataFrame({
 # Separate Plotting for SARIMA
 st.subheader('SARIMA Forecast')
 sarima_chart = alt.Chart(forecast_data_sarima).mark_line(color='blue').encode(
-    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
+    x='Date:T',
     y='Forecasted General Index (SARIMA):Q',
     tooltip=['Date:T', 'Forecasted General Index (SARIMA):Q']
 ).properties(
@@ -166,7 +166,7 @@ st.altair_chart(sarima_chart)
 # Separate Plotting for LSTM
 st.subheader('LSTM Forecast')
 lstm_chart = alt.Chart(forecast_data_lstm).mark_line(color='green').encode(
-    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
+    x='Date:T',
     y='Forecasted General Index (LSTM):Q',
     tooltip=['Date:T', 'Forecasted General Index (LSTM):Q']
 ).properties(
@@ -184,13 +184,13 @@ comparison_data = pd.DataFrame({
 })
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
-    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
-    y=alt.Y('value:Q', title='Forecasted General Index'),
+    x='Date:T',
+    y='value:Q',
     color='variable:N',
     tooltip=['Date:T', 'variable:N', 'value:Q']
 ).transform_fold(
     fold=['SARIMA Forecast', 'LSTM Forecast'],
-    as_=['Model', 'Forecasted General Index']
+    as_=['variable', 'value']
 ).properties(
     width=700,
     height=400
