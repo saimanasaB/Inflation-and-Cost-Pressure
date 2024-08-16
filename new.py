@@ -52,8 +52,8 @@ scaled_data = scaler.fit_transform(data)
 # Creating the dataset for LSTM
 def create_dataset(dataset, time_step=1):
     X, Y = [], []
-    for i in range(len(dataset)-time_step-1):
-        a = dataset[i:(i+time_step), 0]
+    for i in range(len(dataset) - time_step - 1):
+        a = dataset[i:(i + time_step), 0]
         X.append(a)
         Y.append(dataset[i + time_step, 0])
     return np.array(X), np.array(Y)
@@ -92,7 +92,6 @@ for _ in range(forecast_steps):
     future_predictions_lstm.append(future_pred_lstm[0, 0])
     current_input_lstm = np.append(current_input_lstm[:, 1:, :], future_pred_lstm.reshape(1, 1, 1), axis=1)
 
-# Define the forecast dates from 2025 to 2030
 future_dates_lstm = pd.date_range(start='2025-01-01', end='2030-12-01', freq='M')
 future_predictions_lstm_inv = scaler.inverse_transform(np.array(future_predictions_lstm).reshape(-1, 1))
 
@@ -113,50 +112,13 @@ forecast_mean_sarima = forecast_sarima.predicted_mean
 forecast_conf_int_sarima = forecast_sarima.conf_int()
 
 # Ensure the lengths of forecast data match the forecast index length
-if len(forecast_mean_sarima) != len(forecast_index_sarima):
-    raise ValueError("Mismatch between forecast data length and forecast index length for SARIMA")
+assert len(forecast_mean_sarima) == len(forecast_index_sarima), "Mismatch between forecast data length and forecast index length for SARIMA"
+assert len(future_predictions_lstm_inv) == len(future_dates_lstm), "Mismatch between forecast data length and forecast index length for LSTM"
 
-if len(future_predictions_lstm_inv) != len(future_dates_lstm):
-    raise ValueError("Mismatch between forecast data length and forecast index length for LSTM")
-
-# Dummy future actual values for comparison (Replace with actual future values if available)
-dummy_future_actual = np.random.rand(forecast_steps)  # Replace with actual future values
-
-# Convert predictions to binary (using a threshold)
-threshold = 0.5
-lstm_binary_preds = (future_predictions_lstm_inv.flatten() >= threshold).astype(int)
-sarima_binary_preds = (forecast_mean_sarima >= threshold).astype(int)
-dummy_binary_actual = (dummy_future_actual >= threshold).astype(int)
-
-# Evaluate SARIMA
-precision_sarima = precision_score(dummy_binary_actual, sarima_binary_preds)
-recall_sarima = recall_score(dummy_binary_actual, sarima_binary_preds)
-f1_sarima = f1_score(dummy_binary_actual, sarima_binary_preds)
-accuracy_sarima = accuracy_score(dummy_binary_actual, sarima_binary_preds)
-mse_sarima = mean_squared_error(dummy_future_actual, forecast_mean_sarima)
-rmse_sarima = np.sqrt(mse_sarima)
-
-# Evaluate LSTM
-precision_lstm = precision_score(dummy_binary_actual, lstm_binary_preds)
-recall_lstm = recall_score(dummy_binary_actual, lstm_binary_preds)
-f1_lstm = f1_score(dummy_binary_actual, lstm_binary_preds)
-accuracy_lstm = accuracy_score(dummy_binary_actual, lstm_binary_preds)
-mse_lstm = mean_squared_error(dummy_future_actual, future_predictions_lstm_inv.flatten())
-rmse_lstm = np.sqrt(mse_lstm)
-
-st.subheader('Model Evaluation Metrics')
-st.write(f"SARIMA - Precision: {precision_sarima}, Recall: {recall_sarima}, F1 Score: {f1_sarima}, Accuracy: {accuracy_sarima}, MSE: {mse_sarima}, RMSE: {rmse_sarima}")
-st.write(f"LSTM - Precision: {precision_lstm}, Recall: {recall_lstm}, F1 Score: {f1_lstm}, Accuracy: {accuracy_lstm}, MSE: {mse_lstm}, RMSE: {rmse_lstm}")
-
-# Prepare data for plotting SARIMA and LSTM forecasts
+# Prepare data for SARIMA plot
 forecast_data_sarima = pd.DataFrame({
     'Date': forecast_index_sarima,
     'Forecasted General Index (SARIMA)': forecast_mean_sarima
-})
-
-forecast_data_lstm = pd.DataFrame({
-    'Date': future_dates_lstm,
-    'Forecasted General Index (LSTM)': future_predictions_lstm_inv.flatten()
 })
 
 # Separate Plotting for SARIMA
@@ -170,6 +132,12 @@ sarima_chart = alt.Chart(forecast_data_sarima).mark_line(color='blue').encode(
     height=400
 )
 st.altair_chart(sarima_chart)
+
+# Prepare data for LSTM plot
+forecast_data_lstm = pd.DataFrame({
+    'Date': future_dates_lstm,
+    'Forecasted General Index (LSTM)': future_predictions_lstm_inv.flatten()
+})
 
 # Separate Plotting for LSTM
 st.subheader('LSTM Forecast')
@@ -188,7 +156,10 @@ st.subheader('Comparison of Forecasts')
 comparison_data = pd.DataFrame({
     'Date': forecast_index_sarima,
     'SARIMA Forecast': forecast_mean_sarima,
-    'LSTM Forecast': np.concatenate([np.nan * np.zeros(len(forecast_index_sarima) - len(future_predictions_lstm_inv)), future_predictions_lstm_inv.flatten()])
+    'LSTM Forecast': np.concatenate([
+        np.full(len(forecast_index_sarima) - len(future_predictions_lstm_inv), np.nan),
+        future_predictions_lstm_inv.flatten()
+    ])
 })
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
