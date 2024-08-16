@@ -13,7 +13,7 @@ st.title('General Index Forecasting using LSTM and SARIMA')
 
 # Load the dataset
 file_path = st.text_input('cleaned_data.csv')
-data = pd.read_csv(file_path)
+data = pd.read_csv('cleaned_data.csv')
 
 # Select the relevant features
 data = data[['Year', 'Month', 'General index']]
