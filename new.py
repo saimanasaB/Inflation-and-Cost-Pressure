@@ -12,8 +12,8 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 st.title('General Index Forecasting using LSTM and SARIMA')
 
 # Load the dataset
-file_path = st.text_input('Enter file path of cleaned data (e.g., cleaned_data.csv)', 'cleaned_data.csv')
-data = pd.read_csv(file_path)
+file_path = st.text_input('cleaned_data.csv')
+data = pd.read_csv('cleaned_data.csv')
 
 # Display the DataFrame
 st.write("Data Preview:")
@@ -112,6 +112,13 @@ forecast_index_sarima = pd.date_range(start='2025-01-01', end='2030-12-01', freq
 forecast_mean_sarima = forecast_sarima.predicted_mean
 forecast_conf_int_sarima = forecast_sarima.conf_int()
 
+# Ensure the lengths of forecast data match the forecast index length
+if len(forecast_mean_sarima) != len(forecast_index_sarima):
+    raise ValueError("Mismatch between forecast data length and forecast index length for SARIMA")
+
+if len(future_predictions_lstm_inv) != len(future_dates_lstm):
+    raise ValueError("Mismatch between forecast data length and forecast index length for LSTM")
+
 # Dummy future actual values for comparison (Replace with actual future values if available)
 dummy_future_actual = np.random.rand(forecast_steps)  # Replace with actual future values
 
@@ -181,21 +188,21 @@ st.subheader('Comparison of Forecasts')
 comparison_data = pd.DataFrame({
     'Date': forecast_index_sarima,
     'SARIMA Forecast': forecast_mean_sarima,
-    'LSTM Forecast': future_predictions_lstm_inv.flatten()
+    'LSTM Forecast': np.concatenate([np.nan * np.zeros(len(forecast_index_sarima) - len(future_predictions_lstm_inv)), future_predictions_lstm_inv.flatten()])
 })
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
     x='Date:T',
-    y='value:Q',
+    y=alt.Y('value:Q', title='Forecasted General Index'),
     color='variable:N',
-    tooltip=['Date:T', 'variable:N', 'value:Q']
+    tooltip=['Date:T', 'value:Q', 'variable:N']
 ).transform_fold(
-    fold=['SARIMA Forecast', 'LSTM Forecast'],
+    ['SARIMA Forecast', 'LSTM Forecast'],
     as_=['variable', 'value']
 ).properties(
     width=700,
     height=400
-)
+).interactive()
 st.altair_chart(comparison_chart)
 
 # Ensure the plots and metrics are displayed properly
