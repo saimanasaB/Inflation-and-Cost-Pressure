@@ -177,23 +177,17 @@ lstm_chart = alt.Chart(forecast_data_lstm).mark_line(color='green').encode(
 )
 st.altair_chart(lstm_chart)
 
-# Comparison Plot
-st.subheader('Comparison of Forecasts')
-comparison_data = pd.DataFrame({
-    'Date': forecast_index_sarima,
-    'Year': forecast_index_sarima.year,
-    'SARIMA Forecast': forecast_mean_sarima,
-    'LSTM Forecast': future_predictions_lstm_inv.flatten()
-})
+# Comparison of forecasts
+comparison_data = pd.concat([
+    forecast_data_sarima[['Year', 'Forecasted General Index (SARIMA)']].rename(columns={'Forecasted General Index (SARIMA)': 'Forecast', 'Year': 'Year'}).assign(Model='SARIMA'),
+    forecast_data_lstm[['Year', 'Forecasted General Index (LSTM)']].rename(columns={'Forecasted General Index (LSTM)': 'Forecast', 'Year': 'Year'}).assign(Model='LSTM')
+])
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
     x=alt.X('Year:O', title='Year'),
-    y=alt.Y('value:Q', title='Forecasted General Index'),
-    color='variable:N',
-    tooltip=['Year:O', 'variable:N', 'value:Q']
-).transform_fold(
-    fold=['SARIMA Forecast', 'LSTM Forecast'],
-    as_=['Model', 'Forecast']
+    y=alt.Y('Forecast:Q', title='Forecasted General Index'),
+    color='Model:N',
+    tooltip=['Year:O', 'Model:N', 'Forecast:Q']
 ).properties(
     width=700,
     height=400
