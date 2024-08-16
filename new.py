@@ -12,8 +12,8 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 st.title('General Index Forecasting using LSTM and SARIMA')
 
 # Load the dataset
-file_path = st.text_input('cleaned_data.csv')
-data = pd.read_csv('cleaned_data.csv')
+file_path = st.text_input('Enter file path of cleaned data (e.g., cleaned_data.csv)', 'cleaned_data.csv')
+data = pd.read_csv(file_path)
 
 # Display the DataFrame
 st.write("Data Preview:")
@@ -143,20 +143,22 @@ st.write(f"LSTM - Precision: {precision_lstm}, Recall: {recall_lstm}, F1 Score: 
 # Prepare data for plotting SARIMA and LSTM forecasts
 forecast_data_sarima = pd.DataFrame({
     'Date': forecast_index_sarima,
+    'Year': forecast_index_sarima.year,
     'Forecasted General Index (SARIMA)': forecast_mean_sarima
 })
 
 forecast_data_lstm = pd.DataFrame({
     'Date': future_dates_lstm,
+    'Year': future_dates_lstm.year,
     'Forecasted General Index (LSTM)': future_predictions_lstm_inv.flatten()
 })
 
 # Separate Plotting for SARIMA
 st.subheader('SARIMA Forecast')
 sarima_chart = alt.Chart(forecast_data_sarima).mark_line(color='blue').encode(
-    x='Date:T',
+    x=alt.X('Year:O', title='Year'),
     y='Forecasted General Index (SARIMA):Q',
-    tooltip=['Date:T', 'Forecasted General Index (SARIMA):Q']
+    tooltip=['Year:O', 'Forecasted General Index (SARIMA):Q']
 ).properties(
     width=700,
     height=400
@@ -166,9 +168,9 @@ st.altair_chart(sarima_chart)
 # Separate Plotting for LSTM
 st.subheader('LSTM Forecast')
 lstm_chart = alt.Chart(forecast_data_lstm).mark_line(color='green').encode(
-    x='Date:T',
+    x=alt.X('Year:O', title='Year'),
     y='Forecasted General Index (LSTM):Q',
-    tooltip=['Date:T', 'Forecasted General Index (LSTM):Q']
+    tooltip=['Year:O', 'Forecasted General Index (LSTM):Q']
 ).properties(
     width=700,
     height=400
@@ -179,18 +181,19 @@ st.altair_chart(lstm_chart)
 st.subheader('Comparison of Forecasts')
 comparison_data = pd.DataFrame({
     'Date': forecast_index_sarima,
+    'Year': forecast_index_sarima.year,
     'SARIMA Forecast': forecast_mean_sarima,
     'LSTM Forecast': future_predictions_lstm_inv.flatten()
 })
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
-    x='Date:T',
-    y='value:Q',
+    x=alt.X('Year:O', title='Year'),
+    y=alt.Y('value:Q', title='Forecasted General Index'),
     color='variable:N',
-    tooltip=['Date:T', 'variable:N', 'value:Q']
+    tooltip=['Year:O', 'variable:N', 'value:Q']
 ).transform_fold(
     fold=['SARIMA Forecast', 'LSTM Forecast'],
-    as_=['variable', 'value']
+    as_=['Model', 'Forecast']
 ).properties(
     width=700,
     height=400
