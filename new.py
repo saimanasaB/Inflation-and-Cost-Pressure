@@ -92,7 +92,7 @@ for _ in range(forecast_steps):
     future_predictions_lstm.append(future_pred_lstm[0, 0])
     current_input_lstm = np.append(current_input_lstm[:, 1:, :], future_pred_lstm.reshape(1, 1, 1), axis=1)
 
-future_dates_lstm = pd.date_range(start='2025-01-01', end='2030-12-01', freq='M')
+future_dates_lstm = pd.date_range(start='2025-01-01', periods=forecast_steps, freq='M')
 future_predictions_lstm_inv = scaler.inverse_transform(np.array(future_predictions_lstm).reshape(-1, 1))
 
 # Define the SARIMA model
@@ -107,7 +107,7 @@ sarima_results = sarima_model.fit(disp=False)
 
 # Forecasting the next 60 months (5 years) using SARIMA
 forecast_sarima = sarima_results.get_forecast(steps=forecast_steps)
-forecast_index_sarima = pd.date_range(start='2025-01-01', end='2030-12-01', freq='M')
+forecast_index_sarima = pd.date_range(start='2025-01-01', periods=forecast_steps, freq='M')
 forecast_mean_sarima = forecast_sarima.predicted_mean
 forecast_conf_int_sarima = forecast_sarima.conf_int()
 
