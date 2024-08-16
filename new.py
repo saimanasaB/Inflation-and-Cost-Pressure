@@ -125,16 +125,20 @@ precision_sarima = precision_score(dummy_binary_actual, sarima_binary_preds)
 recall_sarima = recall_score(dummy_binary_actual, sarima_binary_preds)
 f1_sarima = f1_score(dummy_binary_actual, sarima_binary_preds)
 accuracy_sarima = accuracy_score(dummy_binary_actual, sarima_binary_preds)
+mse_sarima = mean_squared_error(dummy_future_actual, forecast_mean_sarima)
+rmse_sarima = np.sqrt(mse_sarima)
 
 # Evaluate LSTM
 precision_lstm = precision_score(dummy_binary_actual, lstm_binary_preds)
 recall_lstm = recall_score(dummy_binary_actual, lstm_binary_preds)
 f1_lstm = f1_score(dummy_binary_actual, lstm_binary_preds)
 accuracy_lstm = accuracy_score(dummy_binary_actual, lstm_binary_preds)
+mse_lstm = mean_squared_error(dummy_future_actual, future_predictions_lstm_inv.flatten())
+rmse_lstm = np.sqrt(mse_lstm)
 
 st.subheader('Model Evaluation Metrics')
-st.write(f"SARIMA - Precision: {precision_sarima}, Recall: {recall_sarima}, F1 Score: {f1_sarima}, Accuracy: {accuracy_sarima}")
-st.write(f"LSTM - Precision: {precision_lstm}, Recall: {recall_lstm}, F1 Score: {f1_lstm}, Accuracy: {accuracy_lstm}")
+st.write(f"SARIMA - Precision: {precision_sarima}, Recall: {recall_sarima}, F1 Score: {f1_sarima}, Accuracy: {accuracy_sarima}, MSE: {mse_sarima}, RMSE: {rmse_sarima}")
+st.write(f"LSTM - Precision: {precision_lstm}, Recall: {recall_lstm}, F1 Score: {f1_lstm}, Accuracy: {accuracy_lstm}, MSE: {mse_lstm}, RMSE: {rmse_lstm}")
 
 # Prepare data for plotting SARIMA and LSTM forecasts
 forecast_data_sarima = pd.DataFrame({
@@ -171,10 +175,24 @@ lstm_chart = alt.Chart(forecast_data_lstm).mark_line(color='green').encode(
 )
 st.altair_chart(lstm_chart)
 
-# Ensure the plots and metrics are displayed properly
-st.subheader('Forecast Data')
-st.write("Forecasted General Index using SARIMA:")
-st.dataframe(forecast_data_sarima)
+# Comparison Plot
+st.subheader('Comparison of Forecasts')
+comparison_data = pd.DataFrame({
+    'Date': forecast_index_sarima,
+    'SARIMA Forecast': forecast_mean_sarima,
+    'LSTM Forecast': future_predictions_lstm_inv.flatten()
+})
 
-st.write("Forecasted General Index using LSTM:")
-st.dataframe(forecast_data_lstm)
+comparison_chart = alt.Chart(comparison_data).mark_line().encode(
+    x='Date:T',
+    y='value:Q',
+    color='variable:N',
+    tooltip=['Date:T', 'variable:N', 'value:Q']
+).transform_fold(
+    fold=['SARIMA Forecast', 'LSTM Forecast'],
+    as_=['variable', 'value']
+).properties(
+    width=700,
+    height=400
+)
+st.altair
