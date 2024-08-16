@@ -111,9 +111,14 @@ forecast_index_sarima = pd.date_range(start='2025-01-01', end='2030-12-01', freq
 forecast_mean_sarima = forecast_sarima.predicted_mean
 forecast_conf_int_sarima = forecast_sarima.conf_int()
 
-# Ensure the lengths of forecast data match the forecast index length
-assert len(forecast_mean_sarima) == len(forecast_index_sarima), "Mismatch between forecast data length and forecast index length for SARIMA"
-assert len(future_predictions_lstm_inv) == len(future_dates_lstm), "Mismatch between forecast data length and forecast index length for LSTM"
+# Handle length mismatch if needed
+if len(forecast_mean_sarima) != len(forecast_index_sarima):
+    st.error(f"Length mismatch: SARIMA forecast data length ({len(forecast_mean_sarima)}) does not match forecast index length ({len(forecast_index_sarima)})")
+    st.stop()
+
+if len(future_predictions_lstm_inv) != len(future_dates_lstm):
+    st.error(f"Length mismatch: LSTM forecast data length ({len(future_predictions_lstm_inv)}) does not match forecast index length ({len(future_dates_lstm)})")
+    st.stop()
 
 # Prepare data for SARIMA plot
 forecast_data_sarima = pd.DataFrame({
