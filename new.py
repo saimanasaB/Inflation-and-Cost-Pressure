@@ -37,7 +37,7 @@ data.set_index('Date', inplace=True)
 # Plot the General Index to understand its trend
 st.subheader('General Index Over Time')
 base_chart = alt.Chart(data.reset_index()).mark_line().encode(
-    x='Date:T',
+    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
     y='General index:Q'
 ).properties(
     width=700,
@@ -52,8 +52,8 @@ scaled_data = scaler.fit_transform(data)
 # Creating the dataset for LSTM
 def create_dataset(dataset, time_step=1):
     X, Y = [], []
-    for i in range(len(dataset) - time_step - 1):
-        a = dataset[i:(i + time_step), 0]
+    for i in range(len(dataset)-time_step-1):
+        a = dataset[i:(i+time_step), 0]
         X.append(a)
         Y.append(dataset[i + time_step, 0])
     return np.array(X), np.array(Y)
@@ -92,7 +92,7 @@ for _ in range(forecast_steps):
     future_predictions_lstm.append(future_pred_lstm[0, 0])
     current_input_lstm = np.append(current_input_lstm[:, 1:, :], future_pred_lstm.reshape(1, 1, 1), axis=1)
 
-future_dates_lstm = pd.date_range(start='2025-01-01', periods=forecast_steps, freq='M')
+future_dates_lstm = pd.date_range(data.index[-1] + pd.DateOffset(months=1), periods=forecast_steps, freq='M')
 future_predictions_lstm_inv = scaler.inverse_transform(np.array(future_predictions_lstm).reshape(-1, 1))
 
 # Define the SARIMA model
@@ -107,29 +107,54 @@ sarima_results = sarima_model.fit(disp=False)
 
 # Forecasting the next 60 months (5 years) using SARIMA
 forecast_sarima = sarima_results.get_forecast(steps=forecast_steps)
-forecast_index_sarima = pd.date_range(start='2025-01-01', periods=forecast_steps, freq='M')
+forecast_index_sarima = pd.date_range(start=data.index[-1] + pd.DateOffset(months=1), periods=forecast_steps, freq='M')
 forecast_mean_sarima = forecast_sarima.predicted_mean
 forecast_conf_int_sarima = forecast_sarima.conf_int()
 
-# Handle length mismatch if needed
-if len(forecast_mean_sarima) != len(forecast_index_sarima):
-    st.error(f"Length mismatch: SARIMA forecast data length ({len(forecast_mean_sarima)}) does not match forecast index length ({len(forecast_index_sarima)})")
-    st.stop()
+# Dummy future actual values for comparison (Replace with actual future values if available)
+dummy_future_actual = np.random.rand(forecast_steps)  # Replace with actual future values
 
-if len(future_predictions_lstm_inv) != len(future_dates_lstm):
-    st.error(f"Length mismatch: LSTM forecast data length ({len(future_predictions_lstm_inv)}) does not match forecast index length ({len(future_dates_lstm)})")
-    st.stop()
+# Convert predictions to binary (using a threshold)
+threshold = 0.5
+lstm_binary_preds = (future_predictions_lstm_inv.flatten() >= threshold).astype(int)
+sarima_binary_preds = (forecast_mean_sarima >= threshold).astype(int)
+dummy_binary_actual = (dummy_future_actual >= threshold).astype(int)
 
-# Prepare data for SARIMA plot
+# Evaluate SARIMA
+precision_sarima = precision_score(dummy_binary_actual, sarima_binary_preds)
+recall_sarima = recall_score(dummy_binary_actual, sarima_binary_preds)
+f1_sarima = f1_score(dummy_binary_actual, sarima_binary_preds)
+accuracy_sarima = accuracy_score(dummy_binary_actual, sarima_binary_preds)
+mse_sarima = mean_squared_error(dummy_future_actual, forecast_mean_sarima)
+rmse_sarima = np.sqrt(mse_sarima)
+
+# Evaluate LSTM
+precision_lstm = precision_score(dummy_binary_actual, lstm_binary_preds)
+recall_lstm = recall_score(dummy_binary_actual, lstm_binary_preds)
+f1_lstm = f1_score(dummy_binary_actual, lstm_binary_preds)
+accuracy_lstm = accuracy_score(dummy_binary_actual, lstm_binary_preds)
+mse_lstm = mean_squared_error(dummy_future_actual, future_predictions_lstm_inv.flatten())
+rmse_lstm = np.sqrt(mse_lstm)
+
+st.subheader('Model Evaluation Metrics')
+st.write(f"SARIMA - Precision: {precision_sarima}, Recall: {recall_sarima}, F1 Score: {f1_sarima}, Accuracy: {accuracy_sarima}, MSE: {mse_sarima}, RMSE: {rmse_sarima}")
+st.write(f"LSTM - Precision: {precision_lstm}, Recall: {recall_lstm}, F1 Score: {f1_lstm}, Accuracy: {accuracy_lstm}, MSE: {mse_lstm}, RMSE: {rmse_lstm}")
+
+# Prepare data for plotting SARIMA and LSTM forecasts
 forecast_data_sarima = pd.DataFrame({
     'Date': forecast_index_sarima,
     'Forecasted General Index (SARIMA)': forecast_mean_sarima
 })
 
+forecast_data_lstm = pd.DataFrame({
+    'Date': future_dates_lstm,
+    'Forecasted General Index (LSTM)': future_predictions_lstm_inv.flatten()
+})
+
 # Separate Plotting for SARIMA
 st.subheader('SARIMA Forecast')
 sarima_chart = alt.Chart(forecast_data_sarima).mark_line(color='blue').encode(
-    x='Date:T',
+    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
     y='Forecasted General Index (SARIMA):Q',
     tooltip=['Date:T', 'Forecasted General Index (SARIMA):Q']
 ).properties(
@@ -138,16 +163,10 @@ sarima_chart = alt.Chart(forecast_data_sarima).mark_line(color='blue').encode(
 )
 st.altair_chart(sarima_chart)
 
-# Prepare data for LSTM plot
-forecast_data_lstm = pd.DataFrame({
-    'Date': future_dates_lstm,
-    'Forecasted General Index (LSTM)': future_predictions_lstm_inv.flatten()
-})
-
 # Separate Plotting for LSTM
 st.subheader('LSTM Forecast')
 lstm_chart = alt.Chart(forecast_data_lstm).mark_line(color='green').encode(
-    x='Date:T',
+    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
     y='Forecasted General Index (LSTM):Q',
     tooltip=['Date:T', 'Forecasted General Index (LSTM):Q']
 ).properties(
@@ -161,24 +180,21 @@ st.subheader('Comparison of Forecasts')
 comparison_data = pd.DataFrame({
     'Date': forecast_index_sarima,
     'SARIMA Forecast': forecast_mean_sarima,
-    'LSTM Forecast': np.concatenate([
-        np.full(len(forecast_index_sarima) - len(future_predictions_lstm_inv), np.nan),
-        future_predictions_lstm_inv.flatten()
-    ])
+    'LSTM Forecast': future_predictions_lstm_inv.flatten()
 })
 
 comparison_chart = alt.Chart(comparison_data).mark_line().encode(
-    x='Date:T',
+    x=alt.X('Date:T', title='Date', axis=alt.Axis(format='%Y')),  # Format x-axis to show years
     y=alt.Y('value:Q', title='Forecasted General Index'),
     color='variable:N',
-    tooltip=['Date:T', 'value:Q', 'variable:N']
+    tooltip=['Date:T', 'variable:N', 'value:Q']
 ).transform_fold(
-    ['SARIMA Forecast', 'LSTM Forecast'],
-    as_=['variable', 'value']
+    fold=['SARIMA Forecast', 'LSTM Forecast'],
+    as_=['Model', 'Forecasted General Index']
 ).properties(
     width=700,
     height=400
-).interactive()
+)
 st.altair_chart(comparison_chart)
 
 # Ensure the plots and metrics are displayed properly
